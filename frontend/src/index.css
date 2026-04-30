@@ -185,3 +185,76 @@ button:hover {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
+
+
+.navbar {
+  background: #1e3a8a;
+  color: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.navbar-brand {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  color: white;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.active-link {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.dashboard-card {
+  background: white;
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.dashboard-card h3 {
+  font-size: 1rem;
+  color: #374151;
+  margin-bottom: 0.8rem;
+}
+
+.dashboard-card p {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.low-stock-card {
+  border: 2px solid #dc2626;
+}
+
+.low-stock-card p {
+  color: #dc2626;
+}

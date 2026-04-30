@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import toast from "react-hot-toast";
 
 export default function ProductForm({
   suppliers,
@@ -87,6 +88,7 @@ export default function ProductForm({
     try {
       if (selectedProduct) {
         await api.put(`/products/${selectedProduct.id}`, payload);
+        toast.success(selectedProduct ? "Product updated successfully" : "Product added successfully");
       } else {
         await api.post("/products", payload);
       }
@@ -102,6 +104,7 @@ export default function ProductForm({
       onProductSaved();
     } catch (err) {
       console.error("Error saving product:", err);
+      toast.error(err.response?.data?.message || "Failed to save product");
     }
   };
 

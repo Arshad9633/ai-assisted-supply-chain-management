@@ -91,6 +91,7 @@ export default function InventoryForm({
     try {
       if (selectedInventory) {
         await api.put(`/inventory/${selectedInventory.id}`, payload);
+        toast.success(selectedInventory ? "Inventory updated successfully" : "Inventory added successfully");
       } else {
         await api.post("/inventory", payload);
       }
@@ -106,7 +107,7 @@ export default function InventoryForm({
       clearSelection();
       onInventorySaved();
     } catch (err) {
-      console.error("Error saving inventory:", err);
+      toast.error(err.response?.data?.message || "Failed to save inventory");
     }
   };
 

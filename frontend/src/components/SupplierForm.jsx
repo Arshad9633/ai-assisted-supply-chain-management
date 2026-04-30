@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import toast from "react-hot-toast";
 
 export default function SupplierForm({
   onSupplierSaved,
@@ -60,8 +61,10 @@ export default function SupplierForm({
     try {
       if (selectedSupplier) {
         await api.put(`/suppliers/${selectedSupplier.id}`, payload);
+        toast.success(selectedSupplier ? "Supplier updated successfully" : "Supplier added successfully");
       } else {
         await api.post("/suppliers", payload);
+        toast.success("Supplier added successfully");
       }
 
       resetForm();
@@ -69,6 +72,9 @@ export default function SupplierForm({
       onSupplierSaved();
     } catch (error) {
       console.error("Error saving supplier:", error);
+      const backendMessage =
+        error.response?.data?.message || "Failed to save supplier";
+      toast.error(backendMessage);
     }
   };
 

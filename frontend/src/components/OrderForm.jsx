@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../services/api";
+import toast from "react-hot-toast";
 
 export default function OrderForm({ products, onOrderSaved }) {
   const [formData, setFormData] = useState({
@@ -85,7 +86,7 @@ export default function OrderForm({ products, onOrderSaved }) {
       });
 
       setErrors({});
-      alert("Order created successfully");
+      toast.success("Order created successfully");
       onOrderSaved();
     } catch (err) {
       console.error("Error creating order:", err);
@@ -93,7 +94,7 @@ export default function OrderForm({ products, onOrderSaved }) {
       const backendMessage =
         err.response?.data?.message || "Failed to create order";
 
-      alert(backendMessage);
+      toast.error(backendMessage);
     }
   };
 
