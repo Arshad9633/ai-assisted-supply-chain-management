@@ -7,8 +7,15 @@ export default function OrderList({
   onOrderDeleted,
 }) {
   const getProductName = (id) => {
-    const p = products.find((x) => x.id === id);
-    return p ? p.productName : "Unknown";
+    const p = products.find(
+      (x) =>
+        x.id === id ||
+        x._id === id ||
+        String(x.id) === String(id) ||
+        String(x._id) === String(id)
+    );
+
+    return p ? p.productName || p.name : "Unknown";
   };
 
   const handleDelete = async (id) => {
