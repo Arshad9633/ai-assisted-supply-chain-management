@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
 import api from "../services/api";
 
 export default function InventoryForm({
@@ -25,15 +26,20 @@ export default function InventoryForm({
         reorderThreshold: selectedInventory.reorderThreshold ?? "",
       });
     } else {
-      setFormData({
-        productId: "",
-        warehouseId: "",
-        stockLevel: "",
-        reorderThreshold: "",
-      });
+      resetForm();
     }
+
     setErrors({});
   }, [selectedInventory]);
+
+  const resetForm = () => {
+    setFormData({
+      productId: "",
+      warehouseId: "",
+      stockLevel: "",
+      reorderThreshold: "",
+    });
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -65,14 +71,16 @@ export default function InventoryForm({
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
 
     setErrors((prev) => ({
       ...prev,
-      [e.target.name]: "",
+      [name]: "",
     }));
   };
 
@@ -90,28 +98,28 @@ export default function InventoryForm({
 
     try {
       if (selectedInventory) {
-        await api.put(`/inventory/${selectedInventory.id}`, payload);
-        toast.success(selectedInventory ? "Inventory updated successfully" : "Inventory added successfully");
+        const inventoryId = selectedInventory.id || selectedInventory._id;
+
+        await api.put(`/inventory/${inventoryId}`, payload);
+        toast.success("Inventory updated successfully");
       } else {
         await api.post("/inventory", payload);
+        toast.success("Inventory added successfully");
       }
 
-      setFormData({
-        productId: "",
-        warehouseId: "",
-        stockLevel: "",
-        reorderThreshold: "",
-      });
-
+      resetForm();
       setErrors({});
       clearSelection();
-      onInventorySaved();
+      await onInventorySaved();
     } catch (err) {
+      console.error("Error saving inventory:", err);
       toast.error(err.response?.data?.message || "Failed to save inventory");
     }
   };
 
   const handleCancel = () => {
+    resetForm();
+    setErrors({});
     clearSelection();
   };
 
@@ -126,12 +134,14 @@ export default function InventoryForm({
           className={errors.productId ? "input-error" : ""}
         >
           <option value="">Select Product</option>
+
           {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.productName}
+            <option key={p.id || p._id} value={p.id || p._id}>
+              {p.productName || p.name}
             </option>
           ))}
         </select>
+
         {errors.productId && <p className="error-text">{errors.productId}</p>}
       </div>
 
@@ -144,7 +154,9 @@ export default function InventoryForm({
           onChange={handleChange}
           className={errors.warehouseId ? "input-error" : ""}
         />
-        {errors.warehouseId && <p className="error-text">{errors.warehouseId}</p>}
+        {errors.warehouseId && (
+          <p className="error-text">{errors.warehouseId}</p>
+        )}
       </div>
 
       <div className="form-group">
