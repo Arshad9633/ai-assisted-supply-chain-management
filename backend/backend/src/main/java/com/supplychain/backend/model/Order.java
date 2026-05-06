@@ -1,7 +1,8 @@
 package com.supplychain.backend.model;
 
-import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +11,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -20,12 +22,9 @@ public class Order {
     @Id
     private String id;
 
-    @NotBlank(message = "Product ID is required")
-    private String productId;
-
-    @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Quantity must be greater than 0")
-    private Integer quantity;
+    @NotEmpty(message = "Order items are required")
+    @Valid
+    private List<OrderItem> items;
 
     @NotNull(message = "Order date is required")
     private LocalDate orderDate;

@@ -1,21 +1,21 @@
 package com.supplychain.backend.dto;
 
-import jakarta.validation.constraints.Min;
+import com.supplychain.backend.model.OrderItem;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class OrderRequest {
 
-    @NotBlank(message = "Product ID is required")
-    private String productId;
-
-    @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Quantity must be greater than 0")
-    private Integer quantity;
+    @NotEmpty(message = "Order items are required")
+    @Valid
+    private List<OrderItem> items;
 
     @NotNull(message = "Order date is required")
     private LocalDate orderDate;

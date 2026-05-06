@@ -6,6 +6,7 @@ import com.supplychain.backend.exception.BadRequestException;
 import com.supplychain.backend.exception.ResourceNotFoundException;
 import com.supplychain.backend.model.Inventory;
 import com.supplychain.backend.model.Order;
+import com.supplychain.backend.model.OrderItem;
 import com.supplychain.backend.repository.InventoryRepository;
 import com.supplychain.backend.repository.OrderRepository;
 import com.supplychain.backend.repository.ProductRepository;
@@ -29,24 +30,35 @@ public class OrderService {
     }
 
     public OrderResponse createOrder(OrderRequest request) {
-        if (!productRepository.existsById(request.getProductId())) {
-            throw new ResourceNotFoundException("Product not found with id: " + request.getProductId());
+        validateOrderItems(request);
+
+        for (OrderItem item : request.getItems()) {
+            Inventory inventory = inventoryRepository
+                    .findByProductIdAndWarehouseId(item.getProductId(), request.getWarehouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Inventory not found for product id: " + item.getProductId()
+                    ));
+
+            if (inventory.getStockLevel() < item.getQuantity()) {
+                throw new BadRequestException(
+                        "Insufficient stock for product id: " + item.getProductId()
+                );
+            }
         }
 
-        Inventory inventory = inventoryRepository
-                .findByProductIdAndWarehouseId(request.getProductId(), request.getWarehouseId())
-                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found for product and warehouse"));
+        for (OrderItem item : request.getItems()) {
+            Inventory inventory = inventoryRepository
+                    .findByProductIdAndWarehouseId(item.getProductId(), request.getWarehouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Inventory not found for product id: " + item.getProductId()
+                    ));
 
-        if (inventory.getStockLevel() < request.getQuantity()) {
-            throw new BadRequestException("Insufficient stock available");
+            inventory.setStockLevel(inventory.getStockLevel() - item.getQuantity());
+            inventoryRepository.save(inventory);
         }
-
-        inventory.setStockLevel(inventory.getStockLevel() - request.getQuantity());
-        inventoryRepository.save(inventory);
 
         Order order = new Order();
-        order.setProductId(request.getProductId());
-        order.setQuantity(request.getQuantity());
+        order.setItems(request.getItems());
         order.setOrderDate(request.getOrderDate());
         order.setDeliveryDate(request.getDeliveryDate());
         order.setWarehouseId(request.getWarehouseId());
@@ -66,14 +78,8 @@ public class OrderService {
     public OrderResponse getOrderById(String id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
-        return mapToResponse(order);
-    }
 
-    public List<OrderResponse> getOrdersByProductId(String productId) {
-        return orderRepository.findByProductId(productId)
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
+        return mapToResponse(order);
     }
 
     public List<OrderResponse> getOrdersByWarehouseId(Integer warehouseId) {
@@ -94,23 +100,71 @@ public class OrderService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
 
+        String oldStatus = order.getOrderStatus();
+
+        if ("Cancelled".equalsIgnoreCase(status)
+                && !"Cancelled".equalsIgnoreCase(oldStatus)) {
+            restoreInventory(order);
+        }
+
         order.setOrderStatus(status);
         Order updatedOrder = orderRepository.save(order);
+
         return mapToResponse(updatedOrder);
     }
 
     public void deleteOrder(String id) {
-        if (!orderRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Order not found with id: " + id);
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+
+        if (!"Cancelled".equalsIgnoreCase(order.getOrderStatus())) {
+            restoreInventory(order);
         }
+
         orderRepository.deleteById(id);
     }
 
+    private void validateOrderItems(OrderRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BadRequestException("At least one order item is required");
+        }
+
+        for (OrderItem item : request.getItems()) {
+            if (!productRepository.existsById(item.getProductId())) {
+                throw new ResourceNotFoundException(
+                        "Product not found with id: " + item.getProductId()
+                );
+            }
+
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+                throw new BadRequestException("Quantity must be greater than 0");
+            }
+        }
+    }
+
+    private void restoreInventory(Order order) {
+        for (OrderItem item : order.getItems()) {
+            Inventory inventory = inventoryRepository
+                    .findByProductIdAndWarehouseId(item.getProductId(), order.getWarehouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Inventory not found for product id: " + item.getProductId()
+                    ));
+
+            inventory.setStockLevel(inventory.getStockLevel() + item.getQuantity());
+            inventoryRepository.save(inventory);
+        }
+    }
+
     private OrderResponse mapToResponse(Order order) {
+        Integer totalQuantity = order.getItems()
+                .stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
+
         return new OrderResponse(
                 order.getId(),
-                order.getProductId(),
-                order.getQuantity(),
+                order.getItems(),
+                totalQuantity,
                 order.getOrderDate(),
                 order.getDeliveryDate(),
                 order.getWarehouseId(),

@@ -36,11 +36,6 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderById(id));
     }
 
-    @GetMapping("/product/{productId}")
-    public ResponseEntity<List<OrderResponse>> getOrdersByProductId(@PathVariable String productId) {
-        return ResponseEntity.ok(orderService.getOrdersByProductId(productId));
-    }
-
     @GetMapping("/warehouse/{warehouseId}")
     public ResponseEntity<List<OrderResponse>> getOrdersByWarehouseId(@PathVariable Integer warehouseId) {
         return ResponseEntity.ok(orderService.getOrdersByWarehouseId(warehouseId));
