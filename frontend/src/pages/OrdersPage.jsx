@@ -5,6 +5,7 @@ import OrderForm from "../components/OrderForm";
 import OrderList from "../components/OrderList";
 import ListControls from "../components/ListControls";
 import Pagination from "../components/Pagination";
+import "./OrdersPage.css";
 
 const ITEMS_PER_PAGE = 4;
 
@@ -21,9 +22,11 @@ export default function OrdersPage() {
     try {
       setLoading(true);
       const res = await api.get("/orders");
-      setOrders(res.data);
+      setOrders(res.data || []);
     } catch (err) {
+      console.error("Error fetching orders:", err);
       toast.error("Failed to load orders");
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -32,9 +35,11 @@ export default function OrdersPage() {
   const fetchProducts = async () => {
     try {
       const res = await api.get("/products");
-      setProducts(res.data);
+      setProducts(res.data || []);
     } catch (err) {
+      console.error("Error fetching products:", err);
       toast.error("Failed to load products");
+      setProducts([]);
     }
   };
 
@@ -59,22 +64,34 @@ export default function OrdersPage() {
     return product ? product.productName || product.name : "Unknown";
   };
 
+  const getOrderProductsText = (order) => {
+    if (!Array.isArray(order.items)) return "";
+
+    return order.items
+      .map((item) => getProductName(item.productId))
+      .join(" ");
+  };
+
   const filteredAndSortedOrders = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
 
     let result = orders.filter((order) => {
-      const productName = getProductName(order.productId);
+      const productText = getOrderProductsText(order);
       const status = order.orderStatus || "";
-      const warehouseId = String(order.warehouseId || "");
-      const quantity = String(order.quantity || "");
+
+      const warehouseText = Array.isArray(order.items)
+        ? order.items.map((item) => String(item.warehouseId || "")).join(" ")
+        : "";
+
+      const totalQuantity = String(order.totalQuantity || "");
       const orderDate = order.orderDate || "";
       const deliveryDate = order.deliveryDate || "";
 
       return (
-        productName.toLowerCase().includes(term) ||
+        productText.toLowerCase().includes(term) ||
         status.toLowerCase().includes(term) ||
-        warehouseId.includes(term) ||
-        quantity.includes(term) ||
+        warehouseText.includes(term) ||
+        totalQuantity.includes(term) ||
         orderDate.includes(term) ||
         deliveryDate.includes(term)
       );
@@ -85,21 +102,11 @@ export default function OrdersPage() {
         case "date-asc":
           return new Date(a.orderDate || 0) - new Date(b.orderDate || 0);
 
-        case "product-asc":
-          return getProductName(a.productId).localeCompare(
-            getProductName(b.productId)
-          );
-
-        case "product-desc":
-          return getProductName(b.productId).localeCompare(
-            getProductName(a.productId)
-          );
-
         case "quantity-asc":
-          return Number(a.quantity || 0) - Number(b.quantity || 0);
+          return Number(a.totalQuantity || 0) - Number(b.totalQuantity || 0);
 
         case "quantity-desc":
-          return Number(b.quantity || 0) - Number(a.quantity || 0);
+          return Number(b.totalQuantity || 0) - Number(a.totalQuantity || 0);
 
         case "status-asc":
           return (a.orderStatus || "").localeCompare(b.orderStatus || "");
@@ -113,7 +120,9 @@ export default function OrdersPage() {
     return result;
   }, [orders, products, searchTerm, sortOption]);
 
-  const totalPages = Math.ceil(filteredAndSortedOrders.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(
+    filteredAndSortedOrders.length / ITEMS_PER_PAGE
+  );
 
   const paginatedOrders = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -128,13 +137,13 @@ export default function OrdersPage() {
     <div className="page-container">
       <h1 className="page-title">Orders</h1>
 
-      <div className="supplier-layout">
-        <div className="card">
+      <div className="orders-layout">
+        <div className="order-form-card">
           <h2>Create Order</h2>
           <OrderForm products={products} onOrderSaved={fetchOrders} />
         </div>
 
-        <div className="card">
+        <div className="order-list-card">
           <h2>Order List</h2>
 
           <ListControls
@@ -146,8 +155,6 @@ export default function OrdersPage() {
             options={[
               { value: "date-desc", label: "Newest First" },
               { value: "date-asc", label: "Oldest First" },
-              { value: "product-asc", label: "Product A-Z" },
-              { value: "product-desc", label: "Product Z-A" },
               { value: "quantity-asc", label: "Lowest Quantity" },
               { value: "quantity-desc", label: "Highest Quantity" },
               { value: "status-asc", label: "Status A-Z" },

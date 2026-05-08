@@ -22,9 +22,6 @@ public class OrderRequest {
 
     private LocalDate deliveryDate;
 
-    @NotNull(message = "Warehouse ID is required")
-    private Integer warehouseId;
-
     @NotBlank(message = "Order status is required")
     private String orderStatus;
 }

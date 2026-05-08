@@ -15,59 +15,109 @@ import api from "../services/api";
 import "./ReportPage.css";
 
 export default function ReportsPage() {
+  const [products, setProducts] = useState([]);
   const [inventoryData, setInventoryData] = useState([]);
   const [lowStockItems, setLowStockItems] = useState([]);
   const [ordersByStatus, setOrdersByStatus] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [productsData, setProductsData] = useState([]);
-
   const [loading, setLoading] = useState(true);
 
-  const getProductName = (item) => {
+  const getData = (result) => {
+    return result.status === "fulfilled" ? result.value.data || [] : [];
+  };
+
+  const getProductNameById = (productId, productsList = products) => {
+    const product = productsList.find(
+      (p) =>
+        p.id === productId ||
+        p._id === productId ||
+        String(p.id) === String(productId) ||
+        String(p._id) === String(productId)
+    );
+
+    return product?.productName || product?.name || "Unknown Product";
+  };
+
+  const getInventoryProductName = (item, productsList = products) => {
     if (item.productName) return item.productName;
     if (item.product?.name) return item.product.name;
     if (item.product?.productName) return item.product.productName;
     if (item.name) return item.name;
-    return "Unknown Product";
+
+    return getProductNameById(item.productId, productsList);
   };
 
-  const getQuantity = (item) => {
-    return item.quantity || item.stockQuantity || item.availableQuantity || 0;
+  const getInventoryQuantity = (item) => {
+    return item.stockLevel ?? item.quantity ?? item.availableQuantity ?? 0;
   };
 
   const getOrderStatus = (order) => {
-    return order.status || order.orderStatus || "Pending";
+    return order.orderStatus || order.status || "Pending";
+  };
+
+  const getOrderTotalQuantity = (order) => {
+    if (order.totalQuantity !== undefined && order.totalQuantity !== null) {
+      return order.totalQuantity;
+    }
+
+    if (Array.isArray(order.items)) {
+      return order.items.reduce(
+        (sum, item) => sum + Number(item.quantity || 0),
+        0
+      );
+    }
+
+    return order.quantity || 0;
+  };
+
+  const getOrderProductsText = (order) => {
+    if (Array.isArray(order.items) && order.items.length > 0) {
+      return order.items
+        .map(
+          (item) =>
+            `${getProductNameById(item.productId)} × ${item.quantity}`
+        )
+        .join(", ");
+    }
+
+    if (order.productId) {
+      return `${getProductNameById(order.productId)} × ${order.quantity || 0}`;
+    }
+
+    return "No products";
   };
 
   const fetchReportsData = async () => {
     try {
-      const [productsRes, inventoryRes, ordersRes, lowStockRes] =
-        await Promise.all([
-          api.get("/products"),
-          api.get("/inventory"),
-          api.get("/orders"),
-          api.get("/inventory/low-stock"),
-        ]);
+      const results = await Promise.allSettled([
+        api.get("/products"),
+        api.get("/inventory"),
+        api.get("/orders"),
+        api.get("/inventory/low-stock"),
+      ]);
 
-      const products = productsRes.data || [];
-      const inventory = inventoryRes.data || [];
-      const orders = ordersRes.data || [];
-      const lowStock = lowStockRes.data || [];
+      const productsList = getData(results[0]);
+      const inventory = getData(results[1]);
+      const orders = getData(results[2]);
+      const lowStock = getData(results[3]);
+
+      setProducts(productsList);
 
       const inventoryChart = inventory.map((item) => ({
-        name: getProductName(item),
-        quantity: getQuantity(item),
+        name: getInventoryProductName(item, productsList),
+        quantity: getInventoryQuantity(item),
       }));
 
       setInventoryData(inventoryChart);
-      setLowStockItems(lowStock);
 
-      const productChart = products.map((product) => ({
-        name: product.name || product.productName || "Unknown Product",
-        value: 1,
+      const lowStockData = lowStock.map((item) => ({
+        ...item,
+        displayProductName: getInventoryProductName(item, productsList),
+        displayQuantity: getInventoryQuantity(item),
       }));
 
-      setProductsData(productChart);
+      setLowStockItems(lowStockData);
 
       const statusCount = {};
 
@@ -82,6 +132,44 @@ export default function ReportsPage() {
       }));
 
       setOrdersByStatus(statusChart);
+
+      const productStatusMap = {};
+
+      orders.forEach((order) => {
+        const status = getOrderStatus(order);
+
+        if (Array.isArray(order.items)) {
+          order.items.forEach((item) => {
+            const productId = item.productId;
+
+            if (!productStatusMap[productId]) {
+              productStatusMap[productId] = {
+                productId,
+                Delivered: 0,
+                Pending: 0,
+                Shipped: 0,
+                Delayed: 0,
+                Cancelled: 0,
+              };
+            }
+
+            productStatusMap[productId][status] =
+              (productStatusMap[productId][status] || 0) +
+              Number(item.quantity || 0);
+          });
+        }
+      });
+
+      const productChart = Object.values(productStatusMap).map((entry) => ({
+        name: getProductNameById(entry.productId, productsList),
+        Delivered: entry.Delivered,
+        Pending: entry.Pending,
+        Shipped: entry.Shipped,
+        Delayed: entry.Delayed,
+        Cancelled: entry.Cancelled,
+      }));
+
+      setProductsData(productChart);
 
       const sortedOrders = [...orders]
         .sort((a, b) => {
@@ -162,8 +250,8 @@ export default function ReportsPage() {
                     <Cell
                       key={`status-${index}`}
                       fill={
-                        ["#0f766e", "#2563eb", "#f59e0b", "#dc2626"][
-                          index % 4
+                        ["#0f766e", "#2563eb", "#f59e0b", "#dc2626", "#7c3aed"][
+                          index % 5
                         ]
                       }
                     />
@@ -178,37 +266,25 @@ export default function ReportsPage() {
       </div>
 
       <div className="reports-grid">
-        <div className="report-card">
-          <h2>Product Distribution</h2>
+        <div className="report-card large-report-card">
+          <h2>Top Selling Products by Status</h2>
 
           {productsData.length === 0 ? (
-            <p className="empty-state">No product data available.</p>
+            <p className="empty-state">No product order data available.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={productsData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  label
-                >
-                  {productsData.map((entry, index) => (
-                    <Cell
-                      key={`product-${index}`}
-                      fill={
-                        ["#0f766e", "#2563eb", "#7c3aed", "#f97316"][
-                          index % 4
-                        ]
-                      }
-                    />
-                  ))}
-                </Pie>
+            <ResponsiveContainer width="100%" height={340}>
+              <BarChart data={productsData}>
+                <XAxis dataKey="name" />
+                <YAxis />
                 <Tooltip />
                 <Legend />
-              </PieChart>
+
+                <Bar dataKey="Delivered" stackId="a" fill="#0f766e" />
+                <Bar dataKey="Pending" stackId="a" fill="#2563eb" />
+                <Bar dataKey="Shipped" stackId="a" fill="#7c3aed" />
+                <Bar dataKey="Delayed" stackId="a" fill="#f59e0b" />
+                <Bar dataKey="Cancelled" stackId="a" fill="#dc2626" />
+              </BarChart>
             </ResponsiveContainer>
           )}
         </div>
@@ -226,12 +302,15 @@ export default function ReportsPage() {
                   <th>Quantity</th>
                 </tr>
               </thead>
+
               <tbody>
                 {lowStockItems.map((item, index) => (
                   <tr key={item.id || item._id || index}>
-                    <td>{getProductName(item)}</td>
+                    <td>{item.displayProductName}</td>
                     <td>
-                      <span className="danger-value">{getQuantity(item)}</span>
+                      <span className="danger-value">
+                        {item.displayQuantity}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -251,24 +330,34 @@ export default function ReportsPage() {
             <thead>
               <tr>
                 <th>Order</th>
+                <th>Products</th>
+                <th>Total Qty</th>
                 <th>Status</th>
                 <th>Date</th>
               </tr>
             </thead>
+
             <tbody>
               {recentOrders.map((order, index) => (
                 <tr key={order.id || order._id || index}>
                   <td>
-                    {order.orderNumber ||
-                      order.id ||
-                      order._id ||
-                      `Order ${index + 1}`}
+                    {order.id
+                      ? `Order #${order.id.slice(-6)}`
+                      : order._id
+                      ? `Order #${order._id.slice(-6)}`
+                      : `Order ${index + 1}`}
                   </td>
+
+                  <td>{getOrderProductsText(order)}</td>
+
+                  <td>{getOrderTotalQuantity(order)}</td>
+
                   <td>
                     <span className="report-status-badge">
                       {getOrderStatus(order)}
                     </span>
                   </td>
+
                   <td>
                     {order.orderDate || order.createdAt
                       ? new Date(

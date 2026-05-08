@@ -34,23 +34,32 @@ public class OrderService {
 
         for (OrderItem item : request.getItems()) {
             Inventory inventory = inventoryRepository
-                    .findByProductIdAndWarehouseId(item.getProductId(), request.getWarehouseId())
+                    .findByProductIdAndWarehouseId(
+                            item.getProductId(),
+                            item.getWarehouseId()
+                    )
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Inventory not found for product id: " + item.getProductId()
+                                    + " in warehouse id: " + item.getWarehouseId()
                     ));
 
             if (inventory.getStockLevel() < item.getQuantity()) {
                 throw new BadRequestException(
                         "Insufficient stock for product id: " + item.getProductId()
+                                + " in warehouse id: " + item.getWarehouseId()
                 );
             }
         }
 
         for (OrderItem item : request.getItems()) {
             Inventory inventory = inventoryRepository
-                    .findByProductIdAndWarehouseId(item.getProductId(), request.getWarehouseId())
+                    .findByProductIdAndWarehouseId(
+                            item.getProductId(),
+                            item.getWarehouseId()
+                    )
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Inventory not found for product id: " + item.getProductId()
+                                    + " in warehouse id: " + item.getWarehouseId()
                     ));
 
             inventory.setStockLevel(inventory.getStockLevel() - item.getQuantity());
@@ -61,7 +70,6 @@ public class OrderService {
         order.setItems(request.getItems());
         order.setOrderDate(request.getOrderDate());
         order.setDeliveryDate(request.getDeliveryDate());
-        order.setWarehouseId(request.getWarehouseId());
         order.setOrderStatus(request.getOrderStatus());
 
         Order savedOrder = orderRepository.save(order);
@@ -80,13 +88,6 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
 
         return mapToResponse(order);
-    }
-
-    public List<OrderResponse> getOrdersByWarehouseId(Integer warehouseId) {
-        return orderRepository.findByWarehouseId(warehouseId)
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
     }
 
     public List<OrderResponse> getOrdersByStatus(String orderStatus) {
@@ -139,15 +140,27 @@ public class OrderService {
             if (item.getQuantity() == null || item.getQuantity() <= 0) {
                 throw new BadRequestException("Quantity must be greater than 0");
             }
+
+            if (item.getWarehouseId() == null) {
+                throw new BadRequestException("Warehouse ID is required for each order item");
+            }
         }
     }
 
     private void restoreInventory(Order order) {
+        if (order.getItems() == null) {
+            return;
+        }
+
         for (OrderItem item : order.getItems()) {
             Inventory inventory = inventoryRepository
-                    .findByProductIdAndWarehouseId(item.getProductId(), order.getWarehouseId())
+                    .findByProductIdAndWarehouseId(
+                            item.getProductId(),
+                            item.getWarehouseId()
+                    )
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Inventory not found for product id: " + item.getProductId()
+                                    + " in warehouse id: " + item.getWarehouseId()
                     ));
 
             inventory.setStockLevel(inventory.getStockLevel() + item.getQuantity());
@@ -156,18 +169,23 @@ public class OrderService {
     }
 
     private OrderResponse mapToResponse(Order order) {
-        Integer totalQuantity = order.getItems()
+        List<OrderItem> items = order.getItems();
+
+        if (items == null) {
+            items = List.of();
+        }
+
+        Integer totalQuantity = items
                 .stream()
-                .mapToInt(OrderItem::getQuantity)
+                .mapToInt(item -> item.getQuantity() == null ? 0 : item.getQuantity())
                 .sum();
 
         return new OrderResponse(
                 order.getId(),
-                order.getItems(),
+                items,
                 totalQuantity,
                 order.getOrderDate(),
                 order.getDeliveryDate(),
-                order.getWarehouseId(),
                 order.getOrderStatus()
         );
     }

@@ -1,4 +1,5 @@
 import api from "../services/api";
+import toast from "react-hot-toast";
 
 export default function OrderList({
   orders,
@@ -19,11 +20,18 @@ export default function OrderList({
   };
 
   const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this order?"
+    );
+
+    if (!confirmDelete) return;
+
     try {
       await api.delete(`/orders/${id}`);
+      toast.success("Order deleted successfully");
       onOrderDeleted();
     } catch (err) {
-      console.error("Error deleting order:", err);
+      toast.error(err.response?.data?.message || "Failed to delete order");
     }
   };
 
@@ -32,9 +40,11 @@ export default function OrderList({
       await api.patch(`/orders/${id}/status`, {
         orderStatus: newStatus,
       });
+
+      toast.success("Order status updated");
       onOrderUpdated();
     } catch (err) {
-      console.error("Error updating order status:", err);
+      toast.error(err.response?.data?.message || "Failed to update status");
     }
   };
 
@@ -45,16 +55,38 @@ export default function OrderList({
   return (
     <div className="supplier-list">
       {orders.map((order) => (
-        <div key={order.id} className="supplier-item">
-          <div className="supplier-name">{getProductName(order.productId)}</div>
+        <div key={order.id} className="order-card">
+          <div className="order-card-title">
+            Order #{order.id?.slice(-6) || "New"}
+          </div>
 
           <div className="supplier-meta">
-            <div><strong>Quantity:</strong> {order.quantity}</div>
-            <div><strong>Order Date:</strong> {order.orderDate}</div>
-            <div><strong>Delivery Date:</strong> {order.deliveryDate || "N/A"}</div>
-            <div><strong>Warehouse ID:</strong> {order.warehouseId}</div>
-            <div><strong>Status:</strong> {order.orderStatus}</div>
+            <div>
+              <strong>Total Quantity:</strong> {order.totalQuantity}
+            </div>
+            <div>
+              <strong>Order Date:</strong> {order.orderDate}
+            </div>
+            <div>
+              <strong>Delivery Date:</strong> {order.deliveryDate || "N/A"}
+            </div>
+            <div>
+              <strong>Status:</strong> {order.orderStatus}
+            </div>
           </div>
+
+          <ul className="order-products-list">
+            {order.items?.length > 0 ? (
+              order.items.map((item, index) => (
+                <li key={index}>
+                  {getProductName(item.productId)} × {item.quantity} | Warehouse ID:{" "}
+                  {item.warehouseId || "N/A"}
+                </li>
+              ))
+            ) : (
+              <li>No order items found</li>
+            )}
+          </ul>
 
           <div className="form-group" style={{ marginTop: "1rem" }}>
             <label>Update Status</label>

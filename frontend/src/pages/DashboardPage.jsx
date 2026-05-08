@@ -29,58 +29,51 @@ export default function DashboardPage() {
   const [lowStockItems, setLowStockItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const getProductId = (item) => {
-    return item.productId || item.product?.id || item.product?._id || "";
+  const getData = (result) => {
+    return result.status === "fulfilled" ? result.value.data || [] : [];
   };
 
   const getProductName = (item, products = []) => {
     if (item.productName) return item.productName;
     if (item.product?.name) return item.product.name;
     if (item.product?.productName) return item.product.productName;
-    if (item.name) return item.name;
 
-    const productId = getProductId(item);
+    const productId = item.productId || item.product?.id || item.product?._id;
 
     const matchedProduct = products.find(
-      (product) =>
-        product.id === productId ||
-        product._id === productId ||
-        String(product.id) === String(productId) ||
-        String(product._id) === String(productId)
+      (p) =>
+        p.id === productId ||
+        p._id === productId ||
+        String(p.id) === String(productId) ||
+        String(p._id) === String(productId)
     );
 
-    return (
-      matchedProduct?.name ||
-      matchedProduct?.productName ||
-      matchedProduct?.title ||
-      "Unknown Product"
-    );
+    return matchedProduct?.productName || matchedProduct?.name || "Unknown Product";
   };
 
   const getQuantity = (item) => {
-    return item.quantity ?? item.stockQuantity ?? item.availableQuantity ?? 0;
+    return item.stockLevel ?? item.quantity ?? item.availableQuantity ?? 0;
   };
 
   const getOrderStatus = (order) => {
-    return order.status || order.orderStatus || "Pending";
+    return order.orderStatus || order.status || "Pending";
   };
 
   const fetchDashboardData = async () => {
     try {
-      const [suppliersRes, productsRes, inventoryRes, ordersRes, lowStockRes] =
-        await Promise.all([
-          api.get("/suppliers"),
-          api.get("/products"),
-          api.get("/inventory"),
-          api.get("/orders"),
-          api.get("/inventory/low-stock"),
-        ]);
+      const results = await Promise.allSettled([
+        api.get("/suppliers"),
+        api.get("/products"),
+        api.get("/inventory"),
+        api.get("/orders"),
+        api.get("/inventory/low-stock"),
+      ]);
 
-      const suppliers = suppliersRes.data || [];
-      const products = productsRes.data || [];
-      const inventory = inventoryRes.data || [];
-      const orders = ordersRes.data || [];
-      const lowStock = lowStockRes.data || [];
+      const suppliers = getData(results[0]);
+      const products = getData(results[1]);
+      const inventory = getData(results[2]);
+      const orders = getData(results[3]);
+      const lowStock = getData(results[4]);
 
       setStats({
         suppliers: suppliers.length,
@@ -129,7 +122,7 @@ export default function DashboardPage() {
 
       setRecentOrders(sortedRecentOrders);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error("Dashboard error:", error);
     } finally {
       setLoading(false);
     }
@@ -216,12 +209,8 @@ export default function DashboardPage() {
                 >
                   {ordersStatusData.map((entry, index) => (
                     <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        ["#0f766e", "#2563eb", "#f59e0b", "#dc2626"][
-                          index % 4
-                        ]
-                      }
+                      key={index}
+                      fill={["#0f766e", "#2563eb", "#f59e0b", "#dc2626"][index % 4]}
                     />
                   ))}
                 </Pie>
@@ -276,22 +265,13 @@ export default function DashboardPage() {
               <tbody>
                 {recentOrders.map((order, index) => (
                   <tr key={order.id || order._id || index}>
+                    <td>{order.id ? `Order #${order.id.slice(-6)}` : `Order ${index + 1}`}</td>
                     <td>
-                      {order.orderNumber ||
-                        order.id ||
-                        order._id ||
-                        `Order ${index + 1}`}
+                      <span className="status-badge">{getOrderStatus(order)}</span>
                     </td>
                     <td>
-                      <span className="status-badge">
-                        {getOrderStatus(order)}
-                      </span>
-                    </td>
-                    <td>
-                      {order.orderDate || order.createdAt
-                        ? new Date(
-                            order.orderDate || order.createdAt
-                          ).toLocaleDateString()
+                      {order.orderDate
+                        ? new Date(order.orderDate).toLocaleDateString()
                         : "N/A"}
                     </td>
                   </tr>

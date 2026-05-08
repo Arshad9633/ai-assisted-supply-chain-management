@@ -3,46 +3,61 @@ import api from "../services/api";
 import toast from "react-hot-toast";
 
 export default function OrderForm({ products, onOrderSaved }) {
+  const [items, setItems] = useState([
+    {
+      productId: "",
+      quantity: "",
+      warehouseId: "",
+    },
+  ]);
+
   const [formData, setFormData] = useState({
-    productId: "",
-    quantity: "",
     orderDate: "",
     deliveryDate: "",
-    warehouseId: "",
     orderStatus: "Pending",
   });
 
   const [errors, setErrors] = useState({});
 
-  const validate = () => {
-    const newErrors = {};
+  const getProductName = (productId) => {
+    const product = products.find(
+      (p) =>
+        p.id === productId ||
+        p._id === productId ||
+        String(p.id) === String(productId) ||
+        String(p._id) === String(productId)
+    );
 
-    if (!formData.productId) {
-      newErrors.productId = "Product is required";
+    return product ? product.productName || product.name : "Product";
+  };
+
+  const totalQuantity = items.reduce(
+    (sum, item) => sum + Number(item.quantity || 0),
+    0
+  );
+
+  const addItem = () => {
+    setItems([...items, { productId: "", quantity: "", warehouseId: "" }]);
+  };
+
+  const removeItem = (index) => {
+    if (items.length === 1) {
+      toast.error("At least one product is required");
+      return;
     }
 
-    if (formData.quantity === "") {
-      newErrors.quantity = "Quantity is required";
-    } else if (Number(formData.quantity) <= 0) {
-      newErrors.quantity = "Quantity must be greater than 0";
-    }
+    setItems(items.filter((_, i) => i !== index));
+  };
 
-    if (!formData.orderDate) {
-      newErrors.orderDate = "Order date is required";
-    }
+  const handleItemChange = (index, field, value) => {
+    const updatedItems = [...items];
+    updatedItems[index][field] = value;
+    setItems(updatedItems);
 
-    if (formData.warehouseId === "") {
-      newErrors.warehouseId = "Warehouse ID is required";
-    } else if (Number(formData.warehouseId) < 0) {
-      newErrors.warehouseId = "Warehouse ID cannot be negative";
-    }
-
-    if (!formData.orderStatus) {
-      newErrors.orderStatus = "Order status is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors((prev) => ({
+      ...prev,
+      [`items-${index}-${field}`]: "",
+    }));
   };
 
   const handleChange = (e) => {
@@ -59,38 +74,76 @@ export default function OrderForm({ products, onOrderSaved }) {
     }));
   };
 
+  const validate = () => {
+    const newErrors = {};
+
+    items.forEach((item, index) => {
+      if (!item.productId) {
+        newErrors[`items-${index}-productId`] = "Product is required";
+      }
+
+      if (item.quantity === "") {
+        newErrors[`items-${index}-quantity`] = "Quantity is required";
+      } else if (Number(item.quantity) <= 0) {
+        newErrors[`items-${index}-quantity`] =
+          "Quantity must be greater than 0";
+      }
+
+      if (item.warehouseId === "") {
+        newErrors[`items-${index}-warehouseId`] = "Warehouse ID is required";
+      } else if (Number(item.warehouseId) < 0) {
+        newErrors[`items-${index}-warehouseId`] =
+          "Warehouse ID cannot be negative";
+      }
+    });
+
+    if (!formData.orderDate) {
+      newErrors.orderDate = "Order date is required";
+    }
+
+    if (!formData.orderStatus) {
+      newErrors.orderStatus = "Order status is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const resetForm = () => {
+    setItems([{ productId: "", quantity: "", warehouseId: "" }]);
+
+    setFormData({
+      orderDate: "",
+      deliveryDate: "",
+      orderStatus: "Pending",
+    });
+
+    setErrors({});
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validate()) return;
 
     const payload = {
-      productId: formData.productId,
-      quantity: Number(formData.quantity),
+      items: items.map((item) => ({
+        productId: item.productId,
+        quantity: Number(item.quantity),
+        warehouseId: Number(item.warehouseId),
+      })),
       orderDate: formData.orderDate,
       deliveryDate: formData.deliveryDate || null,
-      warehouseId: Number(formData.warehouseId),
       orderStatus: formData.orderStatus,
     };
 
     try {
       await api.post("/orders", payload);
 
-      setFormData({
-        productId: "",
-        quantity: "",
-        orderDate: "",
-        deliveryDate: "",
-        warehouseId: "",
-        orderStatus: "Pending",
-      });
-
-      setErrors({});
+      resetForm();
       toast.success("Order created successfully");
       onOrderSaved();
     } catch (err) {
-      console.error("Error creating order:", err);
-
       const backendMessage =
         err.response?.data?.message || "Failed to create order";
 
@@ -100,34 +153,107 @@ export default function OrderForm({ products, onOrderSaved }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="form-group">
-        <label>Product</label>
-        <select
-          name="productId"
-          value={formData.productId}
-          onChange={handleChange}
-          className={errors.productId ? "input-error" : ""}
-        >
-          <option value="">Select Product</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.productName}
-            </option>
-          ))}
-        </select>
-        {errors.productId && <p className="error-text">{errors.productId}</p>}
-      </div>
+      <div className="order-section-title">Products in this order</div>
 
-      <div className="form-group">
-        <label>Quantity</label>
-        <input
-          type="number"
-          name="quantity"
-          value={formData.quantity}
-          onChange={handleChange}
-          className={errors.quantity ? "input-error" : ""}
-        />
-        {errors.quantity && <p className="error-text">{errors.quantity}</p>}
+      {items.map((item, index) => (
+        <div key={index} className="order-item-box">
+          <div className="order-item-header">
+            <span>Item {index + 1}</span>
+
+            <button
+              type="button"
+              className="remove-item-btn"
+              onClick={() => removeItem(index)}
+            >
+              Remove
+            </button>
+          </div>
+
+          <div className="form-group">
+            <label>Product</label>
+            <select
+              value={item.productId}
+              onChange={(e) =>
+                handleItemChange(index, "productId", e.target.value)
+              }
+              className={
+                errors[`items-${index}-productId`] ? "input-error" : ""
+              }
+            >
+              <option value="">Select Product</option>
+
+              {products.map((p) => (
+                <option key={p.id || p._id} value={p.id || p._id}>
+                  {p.productName || p.name}
+                </option>
+              ))}
+            </select>
+
+            {errors[`items-${index}-productId`] && (
+              <p className="error-text">
+                {errors[`items-${index}-productId`]}
+              </p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label>Quantity</label>
+            <input
+              type="number"
+              value={item.quantity}
+              onChange={(e) =>
+                handleItemChange(index, "quantity", e.target.value)
+              }
+              className={errors[`items-${index}-quantity`] ? "input-error" : ""}
+            />
+
+            {errors[`items-${index}-quantity`] && (
+              <p className="error-text">
+                {errors[`items-${index}-quantity`]}
+              </p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label>Warehouse ID</label>
+            <input
+              type="number"
+              value={item.warehouseId}
+              onChange={(e) =>
+                handleItemChange(index, "warehouseId", e.target.value)
+              }
+              className={
+                errors[`items-${index}-warehouseId`] ? "input-error" : ""
+              }
+            />
+
+            {errors[`items-${index}-warehouseId`] && (
+              <p className="error-text">
+                {errors[`items-${index}-warehouseId`]}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+
+      <button type="button" className="add-item-btn" onClick={addItem}>
+        + Add another product
+      </button>
+
+      <div className="order-summary-box">
+        <p>
+          <strong>Total product lines:</strong> {items.length}
+        </p>
+        <p>
+          <strong>Total quantity:</strong> {totalQuantity}
+        </p>
+        <p>
+          <strong>Selected:</strong>{" "}
+          {items
+            .filter((item) => item.productId)
+            .map((item) => getProductName(item.productId))
+            .join(", ") || "No products selected"}
+        </p>
       </div>
 
       <div className="form-group">
@@ -143,25 +269,13 @@ export default function OrderForm({ products, onOrderSaved }) {
       </div>
 
       <div className="form-group">
-        <label>Delivery Date</label>
+        <label>Expected Delivery Date</label>
         <input
           type="date"
           name="deliveryDate"
           value={formData.deliveryDate}
           onChange={handleChange}
         />
-      </div>
-
-      <div className="form-group">
-        <label>Warehouse ID</label>
-        <input
-          type="number"
-          name="warehouseId"
-          value={formData.warehouseId}
-          onChange={handleChange}
-          className={errors.warehouseId ? "input-error" : ""}
-        />
-        {errors.warehouseId && <p className="error-text">{errors.warehouseId}</p>}
       </div>
 
       <div className="form-group">
@@ -178,10 +292,15 @@ export default function OrderForm({ products, onOrderSaved }) {
           <option value="Cancelled">Cancelled</option>
           <option value="Delayed">Delayed</option>
         </select>
-        {errors.orderStatus && <p className="error-text">{errors.orderStatus}</p>}
+
+        {errors.orderStatus && (
+          <p className="error-text">{errors.orderStatus}</p>
+        )}
       </div>
 
-      <button type="submit">Create Order</button>
+      <button type="submit" className="create-order-btn">
+        Create Order
+      </button>
     </form>
   );
 }

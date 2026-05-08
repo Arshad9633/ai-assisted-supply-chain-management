@@ -6,6 +6,7 @@ import {
   Warehouse,
   ShoppingCart,
   BarChart3,
+  Bot
 } from "lucide-react";
 
 import DashboardPage from "./pages/DashboardPage";
@@ -14,6 +15,7 @@ import ProductsPage from "./pages/ProductsPage";
 import InventoryPage from "./pages/InventoryPage";
 import OrdersPage from "./pages/OrdersPage";
 import ReportsPage from "./pages/ReportsPage";
+import ChatbotPage from "./pages/ChatbotPage";
 
 export default function App() {
   return (
@@ -84,6 +86,16 @@ export default function App() {
             <BarChart3 size={20} />
             <span>Reports</span>
           </NavLink>
+
+          <NavLink
+            to="/chatbot"
+            className={({ isActive }) =>
+              isActive ? "menu-item active" : "menu-item"
+            }
+          >
+            <Bot size={20} />
+            <span>AI Assistant</span>
+          </NavLink>
         </nav>
       </aside>
 
@@ -95,6 +107,7 @@ export default function App() {
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/chatbot" element={<ChatbotPage />} />
         </Routes>
       </main>
     </div>

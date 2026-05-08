@@ -1,0 +1,117 @@
+.orders-layout {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.order-form-card,
+.order-list-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 1.6rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.order-form-card h2,
+.order-list-card h2 {
+  font-size: 1.35rem;
+  margin-bottom: 1.2rem;
+  color: #111827;
+}
+
+.order-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 0.8rem;
+}
+
+.order-item-box {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.order-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.remove-item-btn {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.remove-item-btn:hover {
+  background: #fecaca;
+}
+
+.add-item-btn {
+  width: 100%;
+  background: #f1f5f9;
+  color: #2563eb;
+  margin-bottom: 1.4rem;
+}
+
+.add-item-btn:hover {
+  background: #e0ecff;
+}
+
+.order-summary-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.order-summary-box p {
+  margin-bottom: 0.35rem;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.create-order-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.order-card {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.order-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.6rem;
+}
+
+.order-products-list {
+  margin-top: 0.6rem;
+  padding-left: 1rem;
+}
+
+.order-products-list li {
+  margin-bottom: 0.35rem;
+  color: #374151;
+}
+
+@media (max-width: 1100px) {
+  .orders-layout {
+    grid-template-columns: 1fr;
+  }
+}

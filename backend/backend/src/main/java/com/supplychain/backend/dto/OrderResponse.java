@@ -15,6 +15,5 @@ public class OrderResponse {
     private Integer totalQuantity;
     private LocalDate orderDate;
     private LocalDate deliveryDate;
-    private Integer warehouseId;
     private String orderStatus;
 }
