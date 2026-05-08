@@ -96,7 +96,7 @@ This project includes an AI-assisted chatbot that helps users interact with the 
 The chatbot currently supports **rule-based business intelligence** using real database records from the backend. It can access supplier, inventory, product, and order data through REST APIs and return meaningful responses based on the available data.
 
 ### Supported Questions
-
+```text
 Users can ask questions such as:
 
 - Which supplier has highest rating?
@@ -110,9 +110,21 @@ Users can ask questions such as:
 
 ### Example Response
 
-```text
 The highest-rated supplier is Bosch GmbH.
 
 Country: Germany
 Rating: 4.8
 Lead time: 7 days
+
+
+
+### Future Improvments 
+- JWT authentication and role-based access
+- Admin and user dashboards
+- OpenAI/Gemini-powered chatbot responses
+- Demand forecasting
+- Automated reorder recommendations
+- Supplier risk scoring
+- Warehouse transfer management
+- PDF invoice upload and AI document analysis
+- Deployment using Docker and cloud hosting
