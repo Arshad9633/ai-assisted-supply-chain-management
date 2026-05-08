@@ -50,13 +50,11 @@ The project is built as a modern business application using Spring Boot, MongoDB
 - Answers questions using live database data
 - Supports questions about suppliers, inventory, products, orders, and low stock
 
----
 
 ## Business Logic
 
 The system follows this supply chain flow:
 
-```txt
 Supplier → Product → Inventory → Order → Reports → AI Insights
 
 ## Technology Stack
@@ -90,3 +88,31 @@ The frontend is developed using React with Vite. It provides a responsive user i
 - Recharts
 - Lucide React Icons
 - CSS-based responsive UI
+
+## AI Assistant Capabilities
+
+This project includes an AI-assisted chatbot that helps users interact with the supply chain management system through simple business-related questions.
+
+The chatbot currently supports **rule-based business intelligence** using real database records from the backend. It can access supplier, inventory, product, and order data through REST APIs and return meaningful responses based on the available data.
+
+### Supported Questions
+
+Users can ask questions such as:
+
+- Which supplier has highest rating?
+- Which supplier has shortest lead time?
+- Show low stock products
+- Give inventory summary
+- Give order summary
+- Show pending orders
+- Show delayed orders
+- What is the top selling product?
+
+### Example Response
+
+```text
+The highest-rated supplier is Bosch GmbH.
+
+Country: Germany
+Rating: 4.8
+Lead time: 7 days
